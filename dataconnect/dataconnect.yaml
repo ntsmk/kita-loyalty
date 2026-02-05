@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "kita-loyalty"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "kita-loyalty-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
