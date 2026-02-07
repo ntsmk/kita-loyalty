@@ -1,0 +1,13 @@
+{
+  "name": "kita-loyalty",
+  "private": true,
+  "workspaces": ["apps/*", "functions"],
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "echo \"(set up later)\"",
+    "dev:web": "npm --workspace apps/web run dev"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  }
+}

@@ -1,3 +1,31 @@
+# --- root ---
+node_modules
+*.log
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env (never commit secrets)
+.env*
+!.env.example
+
+# --- Next.js (root) ---
+.next
+out
+dist
+
+# --- apps/web ---
+apps/web/node_modules
+apps/web/.next
+apps/web/out
+apps/web/dist
+apps/web/next-env.d.ts
+
+# --- functions ---
+functions/node_modules
+functions/lib
+functions/.firebase
+firebase-debug.log
 # Logs
 logs
 *.log

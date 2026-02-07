@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example   # keep example env files tracked
 
 # vercel
 .vercel
@@ -39,3 +40,27 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# firebase
+.firebase/
+firestore-debug.log
+ui-debug.log
+
+# functions (build outputs)
+functions/lib/
+functions/node_modules/
+
+# IDE / Editor settings
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# macOS
+Icon?
+Thumbs.db
+
+# logs
+logs
+*.log
