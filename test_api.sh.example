@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Replace UID with one from your local Firebase emulator
+curl -X POST http://127.0.0.1:5001/YOUR_PROJECT_ID/us-central1/addPoint -H "Content-Type: application/json" -d '{"data":{"uid":"REPLACE_HERE"}}'
