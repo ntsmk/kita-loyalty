@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
+import Image from "next/image";
 
 function getOrCreateDummyUid() {
   const KEY = "kita_dummy_uid";
@@ -67,7 +68,14 @@ export default function MePage() {
 
           <div className="mt-4 flex justify-center bg-white rounded-xl p-3">
             {qrDataUrl ? (
-              <img src={qrDataUrl} alt="my-qr" className="h-56 w-56" />
+             <Image
+                src={qrDataUrl}
+                alt="Your Kita loyalty card QR code"
+                width={224}
+                height={224}
+                unoptimized
+                className="h-56 w-56"
+              />
             ) : (
               <div className="h-56 w-56 grid place-items-center bg-gray-200 rounded-lg text-black">
                 Generating...
