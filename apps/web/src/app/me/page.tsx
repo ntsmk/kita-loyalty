@@ -1,45 +1,100 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import QRCode from "qrcode";
 import Image from "next/image";
+import QRCode from "qrcode";
+import { useEffect, useMemo, useState } from "react";
 
-function getOrCreateDummyUid() {
-  const KEY = "kita_dummy_uid";
-  const existing =
-    typeof window !== "undefined" ? localStorage.getItem(KEY) : null;
-  if (existing) return existing;
+import {
+  onAuthStateChanged,
+  signInAnonymously,
+} from "firebase/auth";
 
-  const uid = "demo-" + Math.random().toString(36).slice(2, 10);
-  if (typeof window !== "undefined") localStorage.setItem(KEY, uid);
-  return uid;
-}
+import {
+  doc,
+  onSnapshot,
+} from "firebase/firestore";
+
+import { auth, db } from "@/lib/firebase";
 
 export default function MePage() {
-  const [isLoading, setIsLoading] = useState(true);
   const [uid, setUid] = useState<string>("");
-  const [points, setPoints] = useState<number>(3); // ダミー。あとでFirestoreに置き換える
+  const [points, setPoints] = useState<number>(0);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const goal = 10;
   const remaining = useMemo(() => Math.max(goal - points, 0), [points]);
 
-  // 初回だけ uid を用意 + 擬似ローディング解除
-  useEffect(() => {
-    const u = getOrCreateDummyUid();
-    setUid(u);
-    const t = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
+  // Firebase Anonymous Auth
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      setUid(user.uid);
+      return;
+    }
+
+    try {
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error("Anonymous sign-in failed:", error);
+      setErrorMessage(
+        "We could not open your loyalty card. Please try again."
+      );
+      setIsLoading(false);
+    }
+  });
+
+  return unsubscribe;
+}, []);
 
   // uid ができたらQR生成
-  useEffect(() => {
-    if (!uid) return;
+useEffect(() => {
+  if (!uid) return;
 
-    QRCode.toDataURL(uid, { width: 240, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(""));
-  }, [uid]);
+  QRCode.toDataURL(uid, {
+    width: 240,
+    margin: 1,
+  })
+    .then((dataUrl) => {
+      setQrDataUrl(dataUrl);
+    })
+    .catch((error) => {
+      console.error("QR generation failed:", error);
+
+      setErrorMessage(
+        "We could not generate your QR code."
+      );
+
+      setIsLoading(false);
+    });
+}, [uid]);
+
+//Firestore購読用
+useEffect(() => {
+  if (!uid) return;
+
+  const customerRef = doc(db, "customers", uid);
+
+  const unsubscribe = onSnapshot(
+    customerRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        setPoints(0);
+        return;
+      }
+
+      const data = snapshot.data();
+      setPoints(typeof data.points === "number" ? data.points : 0);
+    },
+    (error) => {
+      console.error("Failed to listen to customer points:", error);
+      setErrorMessage("We could not load your points. Please try again.");
+    }
+  );
+
+  return unsubscribe;
+}, [uid]);
 
   if (isLoading) {
     return (
@@ -50,6 +105,30 @@ export default function MePage() {
       </main>
     );
   }
+
+  if (errorMessage) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-gray-50 p-4">
+      <section className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow">
+        <h1 className="text-xl font-bold text-gray-900">
+          Something went wrong
+        </h1>
+
+        <p className="mt-2 text-sm text-gray-600">
+          {errorMessage}
+        </p>
+
+        <button
+          type="button"
+          className="mt-5 w-full rounded-lg bg-black px-4 py-3 text-white"
+          onClick={() => window.location.reload()}
+        >
+          Try again
+        </button>
+      </section>
+    </main>
+  );
+}
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -63,7 +142,8 @@ export default function MePage() {
 
         <section className="rounded-2xl bg-gradient-to-br from-black to-gray-800 p-6 text-white shadow-xl">
           <div className="text-xs opacity-70 break-all text-center">
-            uid: {uid}
+            {/* 後で消すかも */}
+            Customer ID: {uid}
           </div>
 
           <div className="mt-4 flex justify-center bg-white rounded-xl p-3">
@@ -98,21 +178,6 @@ export default function MePage() {
           📱 Add this page to your home screen for quick access.
         </div>
 
-        {/* ダミーボタン（後で消す） */}
-        <div className="flex gap-2">
-          <button
-            className="flex-1 rounded-lg bg-black px-3 py-2 text-white"
-            onClick={() => setPoints((p) => Math.min(p + 1, 99))}
-          >
-            +1 (demo)
-          </button>
-          <button
-            className="flex-1 rounded-lg border px-3 py-2"
-            onClick={() => setPoints((p) => Math.max(p - 1, 0))}
-          >
-            -1 (demo)
-          </button>
-        </div>
       </div>
     </main>
   );
