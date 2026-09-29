@@ -81,15 +81,18 @@ useEffect(() => {
     (snapshot) => {
       if (!snapshot.exists()) {
         setPoints(0);
+        setIsLoading(false);
         return;
       }
 
       const data = snapshot.data();
       setPoints(typeof data.points === "number" ? data.points : 0);
+      setIsLoading(false);
     },
     (error) => {
       console.error("Failed to listen to customer points:", error);
       setErrorMessage("We could not load your points. Please try again.");
+      setIsLoading(false);
     }
   );
 
