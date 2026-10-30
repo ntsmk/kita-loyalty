@@ -200,3 +200,95 @@ export const addPoint = onCall(async (request) => {
 	}
 
 });
+
+// --- Function 3: Redeeming Rewards ---
+// Deduct points when customer redeems a reward.
+export const redeemReward = onCall(async (request) => {
+	// Security check: is the caller authenticated?
+	if (!request.auth){
+		throw new HttpsError("unauthenticated", "Auth required.");
+	}
+
+	// Check if the role is staff or admin, otherwise, throw an error
+	const authorizedRoles = ["admin", "staff"];
+	const role = request.auth.token.role; 
+	if (!authorizedRoles.includes(role)) { // if the role is not on the list defined = it is not admin or staff
+		throw new HttpsError("permission-denied", "FORBIDDEN");
+	}
+
+	// Get the customer uid from the input from frontend.
+	const { uid } = request.data;
+	// Get the staff uid from  the input from frontend
+	const staffUid = request.auth.uid
+
+	if (!uid) { // if uid is empty
+		throw new HttpsError("invalid-argument", "Customer UID is required.");
+	}
+
+	const BOBA_TEA_COST = 10;
+
+	try {
+		
+		// 1. Read the customer's current balance from Firestore.
+		const customerRef = admin.firestore().collection("customers").doc(uid);
+		const transactionRef = admin.firestore().collection("transactions").doc();
+		const result = await admin.firestore().runTransaction(async (t) => {
+			const customerDoc = await t.get(customerRef); 
+			let data = customerDoc.data()
+			let currentPoints = data?.points ?? 0;
+			let newPoints = 0;
+
+		// 2. Verify that the customer exists, the current point is valid, the customer has enough points.
+			if (!customerDoc.exists) {
+	    		throw new HttpsError("not-found", "Customer not found.");
+			}
+
+			if (!Number.isInteger(currentPoints) || currentPoints < 0){
+				throw new HttpsError(
+					"failed-precondition", "Customer points balance is invalid"
+				)
+			}
+
+			if (currentPoints < BOBA_TEA_COST) {
+				throw new HttpsError("failed-precondition", "Current points are not enough for reward");
+			}
+		
+		// 3. Deduct the points atomically using a Firestore transaction.
+			newPoints = currentPoints - BOBA_TEA_COST;
+			t.update(customerRef, {
+					points:newPoints, 
+				 });
+
+		// 4. Create a transaction record documenting the redemption, including the customer, staff member, reward, and points deducted.
+			t.set(transactionRef, {
+				customerId: uid,
+				staffId: staffUid, 
+				timestamp: FieldValue.serverTimestamp(),
+				pointsDeducted: BOBA_TEA_COST,
+				type: "reward redemption",
+				reward: "boba tea"
+			});
+
+		// 5. Return the updated balance and transaction ID to the caller.
+			return {
+				newPoints: newPoints, 
+				transactionId: transactionRef.id 
+	    	};	
+		});
+
+		// Returning data from cloud function to the user's phone, this is final API response
+		return {
+			ok: true,
+			newPoints: result.newPoints,
+			txId: result.transactionId 
+		};
+
+	} catch (error:any) {
+		logger.error("redeemReward transaction failed:", error);
+
+		if (error instanceof HttpsError) throw error;
+
+		throw new HttpsError("internal", "Failed to redeem reward");
+	}
+
+});	
